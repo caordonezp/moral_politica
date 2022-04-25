@@ -1,0 +1,819 @@
+---
+title: "moral y política"
+author: "Camilo A. Ordóñez-Pinilla"
+date: "7/12/2021"
+output: html_document
+---
+
+```{r}
+options(scipen=999)
+```
+
+(*Notas para la presentación 'Juntos pero no revueltos: los problemas de la moralización de la política' - II Congreso Internacional de Ética, Ciencia y Educación - 8 de septiembre 2021*)
+
+# RELACIONES ENTRE MORAL Y POLÍTICA #
+
+Los datos fueron recolectados a través de convocatoria abierta por redes sociales personales e institucionales de la Universidad El Bosque en marzo-abril 2018.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Importamos los datos#
+
+datos <- rio::import("D:/CAMILO/OTHER ACADEMICS/CONGRESO NACIONAL ÉTICA 2021/ANÁLISIS DATOS 2018/moral_politica_2019.csv")
+
+
+
+# Eliminamos las primeras 18 columnas de metadatos de Qualtrics que son innecesarios y podrían potencialmente ser identificadores (por ejemplo porque almacenan la ip). En caso de compartir la base de datos, se compartiría luego de esta edición
+
+datos1 <- subset( datos, select = -c(1:18))
+
+
+# Eliminar las primeras 2 filas con datos de Qualtrics y las filas que tenían los datos de ensayos que no cuentan como respuestas reales de participantes#
+
+datos <- datos1[c(10:192), c(1:14)]
+
+
+#dado que no están bien colocados los nombres de las variables desde Qualtrics, las renombramos#
+
+colnames(datos) <- c('edad', 'genero', 'estrato', 'decadencia_moral', 'decadencia_corrupcion', 'decadencia_economia', 'decadencia_violencia', 'voto', 'vote_bueno', 'vote_bueno_influyo', 'novote_malo', 'novote_malo_influyo', 'nobueno_blanco', 'nobueno_novotar')
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#recodificar las variables categóricas 'genero', 'decadencia, 'voto'
+
+library(dplyr)
+datos <- datos %>% mutate(genero = recode (genero, "1"="masculino", "2"="femenino", "3"="otro", .default = NA_character_))
+datos <- datos %>% mutate (decadencia_moral = recode(decadencia_moral, "1"="sí", "2"="no", .default = NA_character_ ))
+datos <- datos %>% mutate (voto = recode(datos$voto, "1"="votó", "2"="blanco", "3"="no_votó", .default = NA_character_ ))
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#recodificar la clase de las variables
+
+datos <- mutate_at(datos, vars(genero, decadencia_moral, voto), as.factor)
+
+datos <- mutate_at(datos, vars(edad, estrato, decadencia_corrupcion, decadencia_economia, decadencia_violencia, vote_bueno, vote_bueno_influyo, novote_malo, novote_malo_influyo, nobueno_blanco, nobueno_novotar), as.numeric)
+```
+
+
+
+## ANÁLISIS DESCRIPTIVOS ##
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(summarytools)
+print(dfSummary(datos, graph.magnif = 0.75), method = 'render')
+```
+La variable edad parece presentar algunos problemas en su rango.
+
+```{r}
+summary (datos$edad)
+```
+```{r}
+
+boxplot (datos$edad, col="blue", ylab="edad de la muestra")
+abline (h=18, col="red")
+abline (h=90, col="yellow")
+
+```
+Esto muestra problemas con algunas observaciones según la edad: hay algunas bajo 18 años (línea roja) y una sobre 90 años (que es un valor de referencia para las pruebas previas que se realizaron). Por esta razón se procede a eliminar tales observaciones de la base de datos, pero sin eliminar las que tengan datos perdidos.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+# Para no eliminar las de datos perdidos se evita usar la función 'filter' de dplyr
+
+# Primero identificamos las líneas con los datos problemáticos, para luego eliminarlas
+
+which (datos$edad < 18)
+which (datos$edad == 99)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+
+# Ahora procedemos a eliminar esas líneas
+
+datos <- datos [-c(7, 113, 150, 171), ]
+```
+
+Y revisamos que la variable edad parezca estar bien
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+summary (datos$edad)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+boxplot (datos$edad, col="blue", ylab="edad de la muestra")
+abline (h=18, col="red")
+abline (h=90, col="yellow")
+abline (h=(mean(datos$edad, na.rm = TRUE)), col="green")
+
+```
+Lo que muestra que la edad de la muestra está concentrada en personas jóvenes entre 25 y 37 años, pero con varios casos que parecen extremos en edades altas.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+summary (datos$estrato)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+hist (datos$estrato, main = "estrato", xlab = "estrato", ylab = "frecuencia")
+
+```
+En cuanto a estrato, la muestra está concentrada en personas del estrato 3.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+plot(datos$genero)
+```
+Y más o menos equilibrada en género, pero con una mayor representación del género femenino.
+
+Así, la muestra no parece presentar problemas en su composición demográfica que potencialmente afecten los resultados.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+summary (datos$decadencia_moral)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+ggplot(data=subset(datos, !is.na(datos$decadencia_moral)), aes(x=decadencia_moral, fill=decadencia_moral)) + 
+  geom_bar( ) + labs (y="")
+```
+
+
+Una mayoría de personas parece considerar que en efecto se presenta un fenómeno de 'decadencia moral' en el país. Independientemente de qué signifique esto en concreto (dado que el término 'moral' puede tener significados más o menos diferentes que varíen de persona a persona), el punto está en que las personas consideran mayoritariamente que hay un 'empeoramiento' de la moralidad que es generalizado y por ende es importante ver las conexiones que las personas encuentran en tal empeoramiento y fenómenos que son claros problemas del país.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library (ggplot2)
+ggplot(datos, aes(x=decadencia_moral, y=edad, fill=decadencia_moral, na.rm=TRUE)) + 
+  geom_boxplot(alpha=0.3) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette="Dark2") + labs (x="cree en la decadencia moral", y="edad")
+```
+Exploratoriamente, el gráfico indica que la edad no parece ser un factor que haga  una diferencia en la opinión de si hay o no una decadencia moral en el país.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+qplot (decadencia_moral, data=datos, fill = genero)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+qplot (decadencia_moral, data = datos, facets = genero~., fill=genero)
+```
+Estos gráficos tampoco parecen indicar un efecto del género sobre la creencia en la decadencia moral. Así, exploratoriamente, parecería que ni el género ni la edad se relacionan con diferentes creencias acerca de la decadencia moral del país.
+
+Pero, al cruzar las categorías, encontramos algo que parece ser ligeramente diferente.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+g <- ggplot(datos, aes(x = decadencia_moral, y = edad))
+g + geom_boxplot(aes(fill = genero)) 
+```
+
+
+
+En cuanto al género, el gráfico exploratorio parece indicar que dentro del grupo de personas que creen que no hay una decandencia moral, las de género masculino tienden a tener una edad mayor que la de las personas de género femenino. 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(datos, aes(fill=as.factor(estrato), y=as.factor(estrato), x=decadencia_moral)) + 
+    geom_bar(position="stack", stat="identity") + scale_fill_brewer(palette="Accent") + labs (x="cree en la decadencia moral", y="estrato")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+qplot (decadencia_moral, data = datos, facets = as.factor(estrato)~., fill=as.factor(estrato))
+```
+
+No hay personas de estrato 1 que crean que no hay decadencia moral.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+table(datos$estrato)
+```
+Empero, en la muestra solo hay 3 personas de este estrato, lo cuál podría no ser representativo.
+
+Así, el estrato tampoco parece tener un efecto sobre la creencia de que el país está o no en una situación de decadencia moral, a excepción de lo que sucede en el estrato 3, donde sí parece haber una mayor proporción de personas que creen que sí hay una decadencia moral comparadas con las que creen que no la hay.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+
+g <- ggplot(datos, aes(x = decadencia_moral, y = edad, 
+                       ))
+
+g + geom_boxplot(aes(fill = as.factor(estrato))) +  scale_colour_discrete(na.translate = F)
+```
+La edad no parece asociarse a las creencias sobre la decandencia moral entre estratos. Como se vió anteriormente, los participantes de estrato 1 tienen comparativamente mayor edad y todos consideran que sí hay una decadencia moral. Algo similar sucede en el estrato 6.
+
+
+En este sentido, el género, el estrato o la edad -tomadas como variables demográficas importantes y representativas de situaciones sociales que podrían parecer relevantes y que algunas teorías, como la teoría de los fundamentos morales de Haidt, encuentran como explicativas de opiniones políticas y moralmente cargadas- no parecen de entrada tener un rol explicativo que resulte interesante.
+
+Para ahondar en este punto, se ajustó un modelo de regresión logística, tomando la creencia de si se está o no en una situación de decadencia moral como la variable de clasificación (niveles: sí-no) y la edad, el género y el estrato como las variables predictoras.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+class(datos$decadencia_moral)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_decadencia_edad <-glm(decadencia_moral ~ edad, data = datos, family = binomial)
+summary(logistica_decadencia_edad)
+```
+como se esperaba, la edad no parece ser un predictor de la creencia en la decadencia moral (p=.44).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_decadencia_estrato <-glm(decadencia_moral ~ estrato, data = datos, family = binomial)
+summary(logistica_decadencia_estrato)
+```
+
+El estrato tampoco parece tener un efecto sobre la creencia en la decadencia moral (p=0.13)
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_decadencia_genero <-glm(decadencia_moral ~ genero, data = datos, family = binomial)
+summary(logistica_decadencia_genero)
+```
+De manera similar, pertenecer al género femenino no se asocia a una mayor probabilidad de tener una u otra creencia sobre la decadencia moral, en comparación con pertenecer al género masculino (p=0.52) u otro género (p=0.98). 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_decadencia_demograficos <-glm(decadencia_moral ~ estrato + genero + edad, data = datos, family = binomial)
+summary(logistica_decadencia_demograficos)
+
+
+exp(cbind(OR = coef(logistica_decadencia_demograficos), confint(logistica_decadencia_demograficos)))
+```
+Y el modelo complejo también confirma que las variables demográficas consideradas no parecen tener un potencial explicativo relevante para entender que las personas crean que hay o no una decadencia moral en el país.
+
+Hubiera sido interesante ver si variables como la autoidentificación en el espectro político (derecha-izquierda-centro) o la creencia religiosa pueden tener un efecto sobre la evaluación que se hace de la decadencia moral del país. Tales variables no se midieron en el instrumento.
+
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+summary (datos$decadencia_corrupcion)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(hrbrthemes)
+ a <- ggplot( datos, aes(x=datos$decadencia_corrupcion)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + ggtitle("Decadencia moral influye en la corrupción") +
+    theme_ipsum() + labs (x="decandencia moral y corrupción", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_corrupcion, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+a
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ b <- ggplot( datos, aes(x=datos$decadencia_economia)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + ggtitle("Decadencia moral influye en problemas económicos") +
+    theme_ipsum() + labs (x="decandencia moral y economía", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_economia, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+b
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ c <- ggplot( datos, aes(x=datos$decadencia_violencia)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + ggtitle("Decadencia moral influye en violencia") +
+    theme_ipsum() + labs (x="decandencia moral y violencia", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_violencia, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+c
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggpubr)
+
+ a1 <- ggplot( datos, aes(x=datos$decadencia_corrupcion)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)  +
+    theme_ipsum() + labs (x="decandencia moral y corrupción", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_corrupcion, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+
+
+ b1 <- ggplot( datos, aes(x=datos$decadencia_economia)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) +
+    theme_ipsum() + labs (x="decandencia moral y economía", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_economia, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+
+
+ c1 <- ggplot( datos, aes(x=datos$decadencia_violencia)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + 
+    theme_ipsum() + labs (x="decandencia moral y violencia", y="") +  geom_vline(aes(xintercept=mean(datos$decadencia_violencia, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+
+
+joint <- ggarrange(a1, b1, c1,
+                     common.legend = TRUE, legend = "top", labels = "decadencia moral y problemas del país",
+                    ncol = 3,  aling= "v")
+joint
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(Publish)
+ci.mean(datos$decadencia_corrupcion, na.rm=TRUE)
+sd(datos$decadencia_corrupcion, na.rm=TRUE)
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ci.mean(datos$decadencia_economia, na.rm=TRUE)
+sd(datos$decadencia_economia, na.rm=TRUE)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ci.mean(datos$decadencia_violencia, na.rm=TRUE)
+sd(datos$decadencia_violencia, na.rm=TRUE)
+```
+
+En efecto las personas que creen que sí hay una decadencia moral, tienden a considerar que existe una relación entre la decadencia moral del país y  problemas del país de otras índoles, colectivas, políticas, sociales, como la corrupción (m=3.8, sd=0.48), la violencia (m=3.8, sd=0.65) y los problemas económicos (m=3.6, sd=0.49). 
+
+
+Ahora buscamos efectos de las variables demográficas sobre estas creencias en la relación entre decadencia moral y problemas del país
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+decadencia_corrupcion_demograficos <-lm(decadencia_corrupcion ~ estrato + genero + edad, data = datos)
+summary(decadencia_corrupcion_demograficos)
+```
+
+Este modelo parece indicar que no hay relación entre variables demográficas y la creencia en que la decadencia moral se relaciona con la corrupción.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+decadencia_economia_demograficos <-lm(decadencia_economia ~ estrato + genero + edad, data = datos)
+summary(decadencia_economia_demograficos)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+decadencia_violencia_demograficos <-lm(decadencia_violencia ~ estrato + genero + edad, data = datos)
+summary(decadencia_violencia_demograficos)
+```
+
+
+Las variables demográficas no parecen mostrar un efecto diferenciado en estas creencias. Estas creencias son transversales a las variables demográficas.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=subset(datos, !is.na(datos$voto)), aes(x=voto, fill=voto)) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="votación segunda vuelta presidencial 2018") + scale_x_discrete(labels = c('En blanco','No votó','Votó'))
+```
+
+Queremos ver si los demográficos tienen algún efecto sobre estas decisiones de comportamiento electoral usando una regresión multinomial
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(nnet)
+model <- multinom(voto ~ edad + genero + estrato, data=datos)
+summary (model)
+```
+
+Podemos calcular los coeficientes
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+coeficientes1 <- coef(model)
+coeficientes1
+```
+Los odds
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+odds <- exp(coef(model))
+odds
+```
+Y los p-values
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+zvalues <- summary(model)$coefficients / summary(model)$standard.errors
+p.values <- pnorm(abs(zvalues), lower.tail=FALSE)*2
+p.values
+```
+ÚNICO RESULTADO IMPORTANTE: más probable que los que no voten sean de género masculino comparado con los que votan en blanco (odds=5.85) [HOMBRES PREFIEREN NO VOTAR A VOTAR EN BLANCO]
+
+Vamos a ver si hay una relación entre creer en la decadencia moral y tomar una cierta decisión electoral
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+chisq.test(datos$decadencia_moral, datos$voto)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+chisq.test(datos$decadencia_moral, datos$voto, simulate.p.value = TRUE)
+```
+Al parecer no podemos rechazar la hipótesis nula y por ende afirmar una cierta relación entre ambas, debemos seguir suponiendo que son independientes.
+
+Buscamos analizar en más detalle con una regresión multinomial
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model1 <- multinom(voto ~ decadencia_moral, data=datos)
+summary (model1)
+```
+
+Los odds
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+odds1 <- exp(coef(model1))
+odds1
+```
+
+Y los p-values
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+zvalues1 <- summary(model1)$coefficients / summary(model1)$standard.errors
+p.values1 <- pnorm(abs(zvalues1), lower.tail=FALSE)*2
+p.values1
+```
+
+Esto parece indicar que las variables son independientes: la creencia en la decadencia moral es transversal a las diferentes decisiones electorales. 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model2 <- multinom(voto ~ decadencia_corrupcion, data=datos)
+summary (model2)
+
+odds2 <- exp(coef(model2))
+odds2
+
+zvalues2 <- summary(model2)$coefficients / summary(model2)$standard.errors
+p.values2 <- pnorm(abs(zvalues2), lower.tail=FALSE)*2
+p.values2
+```
+
+También parece haber independencia entre creer en la relación decadencia moral - corrupción y las decisiones electorales.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model3 <- multinom(voto ~ decadencia_economia, data=datos)
+summary (model3)
+
+odds3 <- exp(coef(model3))
+odds3
+
+zvalues3 <- summary(model3)$coefficients / summary(model3)$standard.errors
+p.values3 <- pnorm(abs(zvalues3), lower.tail=FALSE)*2
+p.values3
+```
+También hay independencia entre la creencia en la relación decadencia-moral y problemas económicos y las decisiones electorales
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+model4 <- multinom(voto ~ decadencia_violencia, data=datos)
+summary (model4)
+
+odds4 <- exp(coef(model4))
+odds4
+
+zvalues4 <- summary(model4)$coefficients / summary(model4)$standard.errors
+p.values4 <- pnorm(abs(zvalues4), lower.tail=FALSE)*2
+p.values4
+```
+
+Por último, también parece haber independencia entre creer en la relación decadencia moral - violencia y las decisiones electorales.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=subset(datos, !is.na(datos$vote_bueno)), aes(x=vote_bueno, fill=as.factor(vote_bueno))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="Creía que el candidato por el que voté era buena persona") 
+```
+De las personas que votaron, la mayoría parecen considerar que su candidato era buena persona. 
+
+Creamos una nueva variable con los que sí (4 y 5) y con los que no (1 y 2).
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- mutate(datos, vote_bueno_si_no = ifelse(vote_bueno == 4 | vote_bueno ==5, "sí","no"))
+View(datos)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+class(datos$vote_bueno_si_no)
+table(datos$vote_bueno_si_no)
+```
+Es necesario cambiar la clase de la nueva variable para que sea una variable categórica
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+datos <- mutate_at(datos, vars(vote_bueno_si_no), as.factor)
+class(datos$vote_bueno_si_no)
+table(datos$vote_bueno_si_no)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=subset(datos, !is.na(datos$vote_bueno_si_no)), aes(x=vote_bueno_si_no, fill=vote_bueno_si_no )) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none")
+
+```
+
+
+Ahora podemos evaluar si hay efecto de los demográficos sobre el creer que el candidato por el que se votó era buena persona
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_buena_persona_demograficos <-glm(vote_bueno_si_no ~ estrato + genero + edad, data = datos, family = binomial)
+summary(logistica_buena_persona_demograficos)
+exp(cbind(OR = coef(logistica_buena_persona_demograficos), confint(logistica_buena_persona_demograficos)))
+```
+Como es usual tomando como referencia un alpha de 0.05, este modelo logit nos muestra que el estrato (p=0.04) y la edad (p=0.02) tienen un efecto sobre la creencia de que el candidato por el que se votó era una buena persona. Un aumento de una unidad de estrato disminuye en un factor de 0.69 las probabilidades (los odds ¿?) de creer que la persona por la que se votó es buena persona, mientra que un aumento en un año de edad aumenta tales probabilidades en un factor de 1.04. De todas maneras son diferencias relativamente pequeñas.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library (ggplot2)
+ggplot(data=subset(datos, !is.na(datos$vote_bueno_si_no)), aes(x=vote_bueno_si_no, y=edad, fill=vote_bueno_si_no, na.rm=TRUE)) + 
+  geom_boxplot(alpha=0.3) + stat_summary(fun.y=mean, geom="point", shape=20, size=14, color="red", fill="red") +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette="Dark2") + labs (x="Creí que por el que voté era buena persona", y="edad") 
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library (ggplot2)
+ggplot(data=subset(datos, !is.na(datos$vote_bueno_si_no)), aes(x=vote_bueno_si_no, y=estrato, fill=vote_bueno_si_no, na.rm=TRUE)) + 
+  geom_boxplot(alpha=0.3) + stat_summary(fun.y=mean, geom="point", shape=20, size=14, color="red", fill="red") +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette="Dark2") + labs (x="Creí que por el que voté era buena persona", y="estrato")
+```
+En las gráficas vemos las diferencias, que resultaron tener tamaños de efecto pequeños, pero estadísticamente significativos.
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=subset(datos, !is.na(datos$novote_malo)), aes(x=novote_malo, fill=as.factor(novote_malo))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="Creía que el candidato por el que no voté era mala persona") 
+```
+
+Creamos una nueva variable 'no_vote_malo_si_no'
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- mutate(datos, no_vote_malo_si_no = ifelse(novote_malo == 4 | novote_malo ==5, "sí","no"))
+View(datos)
+```
+
+Y vemos su distribución al tomarla como una variable de factor
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- mutate_at(datos, vars(no_vote_malo_si_no), as.factor)
+class(datos$no_vote_malo_si_no)
+table(datos$no_vote_malo_si_no)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=subset(datos, !is.na(datos$no_vote_malo_si_no)), aes(x=no_vote_malo_si_no, fill=no_vote_malo_si_no )) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none")
+
+```
+
+Efectos de demográficas
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+logistica_mala_persona_demograficos <-glm(no_vote_malo_si_no ~ estrato + genero + edad, data = datos, family = binomial)
+summary(logistica_mala_persona_demograficos)
+exp(cbind(OR = coef(logistica_mala_persona_demograficos), confint(logistica_mala_persona_demograficos)))
+```
+Sin efectos de los demográficos
+
+Ahora la relación entre ambas variables, 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+a2 <- ggplot(data=subset(datos, !is.na(datos$vote_bueno)), aes(x=vote_bueno, fill=as.factor(vote_bueno))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="voté bueno") + geom_text(
+     aes(label=round (after_stat(prop*100), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ )
+
+
+
+b2 <- ggplot(data=subset(datos, !is.na(datos$novote_malo)), aes(x=novote_malo, fill=as.factor(novote_malo))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="no voté malo") + geom_text(
+     aes(label=round (after_stat(prop*100), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ ) 
+
+
+
+
+
+joint2 <- ggarrange( a2, b2, common.legend = TRUE, legend = "none", labels = "AUTO", ncol = 2, nrows= 5,  aling= "h")
+
+
+joint2
+
+
+```
+Crece la indiferencia en creer que es malo para no votar, pareciera que creer qeu es bueno para elegir es más importante que creer qeu es malo para rechazar.F
+
+## INFLUENCIA
+
+
+Por último, la influencia de las consideraciones morales en las decisiones electorales.
+
+Influencia en el voto en blanco
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ b <- ggplot( datos, aes(x=datos$nobueno_blanco)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + ggtitle("Creer que ninguno era buena persona motivó voto en blanco") +
+    theme_ipsum() + theme(plot.title = element_text(size = 14, face = "bold")) + labs (x="decandencia moral y corrupción", y="") +  geom_vline(aes(xintercept=mean(datos$nobueno_blanco, na.rm=T)),   
+               color="blue", size=1, linetype=3)
+b
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+a3 <- ggplot(data=subset(datos, !is.na(datos$nobueno_blanco)), aes(x=nobueno_blanco, fill=as.factor(nobueno_blanco))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="ninguno bueno voto blanco") + geom_text(
+     aes(label=round (after_stat(prop*100), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ )
+
+
+
+b3 <- ggplot(data=subset(datos, !is.na(datos$nobueno_novotar)), aes(x=nobueno_novotar, fill=as.factor(nobueno_novotar))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="ninguno bueno no votar") + geom_text(
+     aes(label=round (after_stat(prop*100), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ ) 
+
+c3 <- ggplot(data=subset(datos, !is.na(datos$vote_bueno_influyo)), aes(x=vote_bueno_influyo, fill=as.factor(vote_bueno_influyo))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="mi candidato buena persona") + geom_text(
+     aes(label=round (after_stat(prop*100), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ )
+
+
+
+
+joint3 <- ggarrange( a3, b3, c3, common.legend = TRUE, legend = "none", labels = "", ncol = 3, nrows= 2,  aling= "h")
+
+
+joint3
+
+
+```
+La anterior con porcentajes
+
+Esta con frecuencia
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+a3 <- ggplot(data=subset(datos, !is.na(datos$nobueno_blanco)), aes(x=nobueno_blanco, fill=as.factor(nobueno_blanco))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="ninguno bueno voto blanco") + geom_text(
+     aes(label=round (after_stat(count), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ )
+
+
+
+b3 <- ggplot(data=subset(datos, !is.na(datos$nobueno_novotar)), aes(x=nobueno_novotar, fill=as.factor(nobueno_novotar))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="ninguno bueno no votar") + geom_text(
+     aes(label=round (after_stat(count), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ ) 
+
+c3 <- ggplot(data=subset(datos, !is.na(datos$vote_bueno_influyo)), aes(x=vote_bueno_influyo, fill=as.factor(vote_bueno_influyo))) + 
+  geom_bar( ) +
+  scale_fill_hue(c = 40) +
+  theme(legend.position="none") + labs (y ="", x="mi candidato buena persona") + geom_text(
+     aes(label=round (after_stat(count), digits = 1), group=1),
+     stat='count',
+     nudge_y=0.125,
+     va='bottom',
+     format_string='{:.1f}%'
+ )
+
+
+
+
+joint3 <- ggarrange( a3, b3, c3, common.legend = TRUE, legend = "none", labels = "", ncol = 3, nrows= 2,  aling= "h")
+
+
+joint3
+
+
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tab <- matrix(c(10, 14, 6, 6, 17, 67), ncol=2, byrow=TRUE)
+colnames(tab) <- c('no influyó','influyó')
+rownames(tab) <- c('voto en blanco','no votó','votó')
+tab <- as.table(tab)
+tab
+mosaicplot(tab, shade=TRUE, legend=FALSE)
+```
+Un test de proporciones
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tab1 <- matrix(c(10, 14, 6, 6, 17, 67), ncol=2, byrow=TRUE)
+colnames(tab1) <- c('no influyó','influyó')
+rownames(tab1) <- c('voto en blanco','no votó','votó')
+
+result.prop <- prop.test(tab1)
+result.prop
+```
+en cada grupo 
+
+Grupo de voto en blanco
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tab1 <- matrix(c(10, 14), ncol=2, byrow=TRUE)
+colnames(tab1) <- c('no influyó','influyó')
+rownames(tab1) <- c('voto en blanco')
+
+result.prop <- prop.test(tab1)
+result.prop
+```
+Grupo de voto en blanco no hay diferencia (las consideraciones morales no influyen sobre la decisión de votar en blanco)
+
+Grupo no votó
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tab2 <- matrix(c(6, 6), ncol=2, byrow=TRUE)
+colnames(tab2) <- c('no influyó','influyó')
+rownames(tab2) <- c('no votó')
+
+result.prop <- prop.test(tab2)
+result.prop
+```
+No hay diferencia (las consideraciones morales no influyen sobre la decisión de no votar)
+
+grupo que votó
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tab3 <- matrix(c(17, 67), ncol=2, byrow=TRUE)
+colnames(tab3) <- c('no influyó','influyó')
+rownames(tab3) <- c('votó')
+
+result.prop <- prop.test(tab3)
+result.prop
+```
+
+Sí hay diferencia (las consideraciones morales  influyen sobre la decisión de votar por algún candidato)
+
+# CONCLUSIONES GENERALES
+
+Según estos datos y análisis preliminares:
+
+- Hay un clima de moralización de la política en Colombia, pues se cumplen tres condiciones esenciales:
+
+  - Las personas creen que hay decadencia moral en el paísf
+
+  - Las personas creen que esa decadencia moral [individual] está relacionada con problemas [colectivos] del país (corrupción, economía, violencia)
+  
+  - Las consideraciones morales parecen influir en las decisiones electorales, especialmente entre las personas que votan por un candidato
+  
+NOTA FINAL [PILAS, POSIBLEMENTE NO METER NADA DE ESTO EN LA PRESENTACIÓN, ESPERAR A LAS PREGUNTAS MEJOR QUE MUY PROBABLEMENTE VAYAN POR ESTE LADO]:
+
+- El problema que planteo aquí podría interprertarse como un problema estrictamente **lógico**: las personas tienden a utilizar un grupo de normas en un dominio en donde no se deberían utilizar, ya que esas normas por definición solo deberían utilizarse en otro dominio. 
+
+- Pero, una primera cosa es que ese problema lógico tiene consecuencias prácticas en sí mismas problemáticas: un problema práctico fundamental de usar normas morales para tomar decisiones en el dominio de los problemas colectivos está en la dinámica de las normas. Los problemas colectivos deberían ser enfrentados por normas colectivas no solo por un asunto categorial, sino por un asunto de dinámica: las normas colectivas son normas susceptibles de cambio en las dinámicas colectivas, por eso también son adecuadas para solucionar problemas colectivos, porque el grupo en tanto grupo tiene poder agencial sobre ellas. El problema de aplicar normas morales para solucionar problemas colectivos es que no están (o al menos es lógicamente posible que puedan no estar ) sujetas a una dinámica grupal, por ende, la moralización nos presenta  un escenario en el que las soluciones a problemas colectivos vienen de estructuras normativas sobre las que el grupo no tiene mecanismos efectivos para alterar o intervenir
+
+- Como segunda cosa, hay algo más profundo aquí sobre lo que no puedo extenderme, pero quiero hacer un bosquejo del argumento que quisiera defender: realmente creo que no estoy introduciendo un argumento en contra de la moral en general, sino de cierta concepción de la moral que aún siguen teniendo muchas personas, sobre todo personas que no se dedican a hacer teoría moral. Para muchas personas, cuando se habla de moral se habla de moral en sentido normativo y no en sentido descriptivo. En sentido normativo, las teoría moral nos debe especificar cuáles son las normas morales que debemos seguir. En sentido descriptivo (y me inspiro en la obra de Moore para decir estas cosas), hacer teoría moral es describir los sistemas morales, ver cuáles son sus principios, ver si son internamente coherentes, ver deónticamente qué consecuencias prácticas se siguen y cuáles no, ver qué es posible, o necesario, o imposible como acción moral según ese sistema etc. Esto me parece muy relevante sobre todo en el contexto de resultados de la psicología cultural del siglo XX que nos han mostrado, si bien ahora nos parece obvio pero tal vez no siempre fue así, que hay una pluralidad muy grande de sistemas morales: diferentes culturales, en diferentes tiempos, o en diferentes regiones del planeta, han formado diferentes sistemas de normas morales, muchas veces contradictorios entre sí. Dado que existen diferentes rivales de sistemas morales, y no tenemos una manera no-arbitraria de escoger uno sobre el otro, tal vez lo mejor que podemos hacer como teóricos de la moral es hacer moral descriptiva (o narrativa si se quiere), pero abandonar la esperanza de mostrar que un cierto sistema moral es superior a otro, en términos morales. Podemos mostrar que un sistema moral es superior a otro en términos lógicos, semánticos, pragmáticos, pero no en términos morales absolutos, pues no tenemos un criterio ulterior, de orden superior, que nos permita hacerlo. Tal vez si no tuviéramos el problema de la pluralidad de sistemas morales, y tuviéramos un solo sistema moral (e.g. los diez mandamientos), entonces la moral podría ayudar a la política y tal vez lo que se necesitaría es precisamente MÁS MORAL, RECUPERAR LOS PRINCIPIOS MORALES (?), ELEGIR FUNCIONARIOS MORALES, ETC, y demás estrategias que proponen los moralistas. Pero dado que eso no existe, la estrategia de moralización no nos lleva a un buen camino.
+
+- El otro asunto que es tangencial aquí, pero de igual importancia es el asunto de los esquemas de motivación de la acción humana. Aún si uno encontrara que, en un sentido normativo hay un solo sistema moral, es decir que así haya muchos sistemas articulables podemos argumentar que hay uno que es superior a todos los demás sistemas posibles, el problema es que las normas morales no son nuestra única fuerza motivacional. Aún si cogiéramos a todos los políticos y les enseñáramos un sistema de normas morales y aún si fuéramos exitosos en lograr que ellos interiorizaran tales normas morales, eso no sería suficiente para asegurar que esas normas morales vayan a ser sus guías de conducta en todos los escenarios posibles que se les presenten en su ejercicio como políticos.
+
+[¿HABLO DEL ARGUMENTO DE LA IRRELEVANCIA DE LA MORAL, REVISAR TIEMPOS? - revisar documento del examen doctoral sobre Milgram para recordar los puntos centrales] El experimento de Milgram es un excelente ejemplo de un fenómeno que me gusta llamar el fenómeno de la **insuficiencia o irrelevancia de la moral** [Describir el experimento línea base, los resultados y lo de las entrevistas posteriores]. Esto nos mostraría que aún cuando una persona de manera honesta reporta tener un principio moral M, puede actuar de manera contraria a M sin rechazar M en ningún momento (por eso la irrelevancia de la moral NO ES lo mismo que el desentendimiento moral de Bandura): las reacciones emocionales de estrés al actuar de manera ¬M y los autoreportes hechos en las entrevistas posteriores al experimento serían evidencia de esto. Por ende, aún si superáramos la diversidad moral (tuviéramos un solo sistema moral deseable) y los problemas de la educación moral (supiéramos cómo, que no lo sabemos aún, hacer para que cualquier individuo adoptar ese sistema moral único), nos quedaría el problema gigantesco de suprimir cualquier otra estructura motivacional en la cognición de los individuos. Solo con todos esos retos superados, yo estaría de acuerdo en que no hay problemas en moralizar la política.
+
+[AÚN SI NO SE HABLA DE ESTOS DOS ÚLTIMOS PUNTOS, DAR UNA CONCLUSIÓN DE ESTE ESTILO] Pero, dado que en este mundo estamos, y no contamos con esas condicions ideales, necesitamos intentar evitar MORALIZAR LA POLÍTICA. 
+
+[NO SÉ SI HABLAR DE ESTO O ESPERAR LAS PREGUNTAS]
+
+- ¿Cómo se logra esto? La solución es Kant ("Respuesta a la pregunta qué es la ilustración") - necesitamos enseñar a la gente a que separe el uso privado y el uso público de la razón.
+  
+  
+
+
+
+
